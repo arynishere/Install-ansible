@@ -1,0 +1,126 @@
+---
+########## file module ############
+
+  tasks:
+    - name: Ensure directory exists
+      ansible.builtin.file:
+        path: /tmp/mydir
+        state: directory
+        mode: '0755'
+        owner: myuser
+        group: mygroup
+
+    - name: Ensure an empty file exists
+      ansible.builtin.file:
+        path: /tmp/mydir/myfile.txt
+        state: touch
+        mode: '0644'
+        owner: myuser
+        group: mygroup
+
+    - name: Ensure a regular file exists with content (useful with other modules, like copy or template)
+      ansible.builtin.file:
+        path: /tmp/mydir/regularfile.txt
+        state: file
+        mode: '0644'
+        owner: myuser
+        group: mygroup
+      # Note: "state: file" is usually implied; this is shown for clarity.
+
+    - name: Create a symbolic link to the file
+      ansible.builtin.file:
+        src: /tmp/mydir/myfile.txt
+        path: /tmp/symlink_to_myfile.txt
+        state: link
+
+    - name: Create a hard link to the file
+      ansible.builtin.file:
+        src: /tmp/mydir/myfile.txt
+        path: /tmp/hardlink_to_myfile.txt
+        state: hard
+
+    - name: Remove a file or directory
+      ansible.builtin.file:
+        path: /tmp/mydir/myfile_to_delete.txt
+        state: absent
+
+    - name: Ensure a device is mounted (example device and mount point)
+      ansible.builtin.file:
+        path: /mnt/mydevice
+        state: mounted
+        src: /dev/sdb1
+        fstype: ext4
+        opts: defaults
+###################### END file module ################
+###################### CMD Module / command ###########
+    - name: Check system uptime
+      ansible.builtin.command:
+        cmd: uptime
+
+    - name: List files in /tmp directory
+      ansible.builtin.command:
+        cmd: ls -l /tmp
+
+    - name: List files in /etc directory
+      ansible.builtin.command:
+        cmd: ls -l
+        chdir: /etc
+
+    - name: Create a file if it doesn’t already exist
+      ansible.builtin.command:
+        cmd: touch /tmp/unique_file.txt
+        creates: /tmp/unique_file.txt
+
+    - name: Remove a temporary file if it exists
+      ansible.builtin.command:
+        cmd: rm -f /tmp/tempfile.txt
+        removes: /tmp/tempfile.txt
+
+    - name: Write a message to a file using stdin
+      ansible.builtin.command:
+        cmd: cat > /tmp/message.txt
+        stdin: "Hello, this is a message from Ansible!"
+    
+    - name: Run a command with all possible arguments
+      ansible.builtin.command:
+        cmd: echo "This is a test command"
+        chdir: /tmp                  # Change directory before executing
+        stdin: "Input text for the command" # Pass standard input
+        creates: /tmp/created_file.txt # Only run if this file does not exist
+        removes: /tmp/remove_file.txt  # Only run if this file exists
+      register: command_output         # Register the command's output
+      ignore_errors: true              # Ignore errors if the command fails
+      changed_when: false              # Mark the task as unchanged
+      tags: [command_demo]
+
+    - name: Display command output
+      ansible.builtin.debug:
+        msg: "Command Output: {{ command_output.stdout }}"
+      tags: [command_demo]
+      ################# END CMD ###################
+
+      ################## Shell Module ##################
+      ansible.builtin.shell:
+  cmd: <command>
+  chdir: <path_to_directory>  # Optional: Change directory before executing
+  creates: <path>             # Optional: Command is only run if this file does not exist
+  removes: <path>             # Optional: Command is only run if this file exists
+  executable: <shell_path>    # Optional: Specify a shell, default is /bin/sh
+  stdin: <input_string>       # Optional: Standard input to provide to the command
+  warn: <true_or_false>       # Optional: Set to false to suppress warnings on shell usage
+  args:                       # Optional: Additional command arguments
+    chdir: <directory>        # Additional 'chdir' argument for setting working directory
+
+              ###################### Script ###################
+
+    - name: Run a Bash script on remote hosts
+      ansible.builtin.script:
+        src: /path/to/local/myscript.sh
+        dest: /tmp/myscript.sh
+        creates: /tmp/myscript_done.txt  # Only runs if this file doesn't exist
+        executable: /bin/bash           # Ensure the script runs with Bash
+    - name: Run a Python script on remote hosts
+      ansible.builtin.script:
+        src: /path/to/local/myscript.py
+        dest: /tmp/myscript.py
+        executable: /usr/bin/python3  # Run with Python 3
