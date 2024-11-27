@@ -1,3 +1,4 @@
+---
 ########## file module ############
 
   tasks:
@@ -112,6 +113,7 @@
 
               ###################### Script ###################
 
+
     - name: Run a Bash script on remote hosts
       ansible.builtin.script:
         src: /path/to/local/myscript.sh
@@ -123,3 +125,601 @@
         src: /path/to/local/myscript.py
         dest: /tmp/myscript.py
         executable: /usr/bin/python3  # Run with Python 3
+
+        ################## raw ###################
+      
+    - name: Demonstrate the raw module in one script with descriptions
+      hosts: all
+      become: yes
+      tasks:
+    # Check if Python is installed on the remote host
+    - name: Check if Python is installed
+      ansible.builtin.raw: python3 --version
+      register: python_check
+      ignore_errors: yes  # Proceed even if this fails (Python might not be installed)
+
+    # Install Python on the remote host if it is not installed
+    - name: Install Python if not present
+      ansible.builtin.raw: |
+        yum install -y python3 || apt-get update && apt-get install -y python3
+      when: python_check.failed  # Only run this if the previous task failed
+
+    # Check the disk usage on the remote host
+    - name: Check disk usage
+      ansible.builtin.raw: df -h
+      register: disk_usage  # Capture the output of the command
+
+    # Display the captured disk usage information
+    - name: Display disk usage
+      ansible.builtin.debug:
+        msg: "Disk usage on the host: {{ disk_usage.stdout }}"
+
+    # Attempt to restart the nginx service on the remote host
+    - name: Restart nginx if installed
+      ansible.builtin.raw: systemctl restart nginx
+      ignore_errors: yes  # Ignore errors if nginx is not installed or running
+
+    # Display a completion message
+    - name: Display a message after all tasks
+      ansible.builtin.debug:
+        msg: "Raw module tasks completed successfully!"
+####################### Expect ############################
+    ---
+   - name: Automate interactive tasks with expect
+    hosts: all
+    become: yes
+    tasks:
+    # Task 1: Automate SSH key addition to known_hosts
+    - name: Add SSH key to known_hosts
+      ansible.builtin.expect:
+        command: ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+        responses:
+          "yes/no": "yes"
+      register: ssh_keyscan_output
+    - name: Display SSH keyscan result
+      ansible.builtin.debug:
+        msg: "{{ ssh_keyscan_output.stdout }}"
+
+    # Task 2: Change root password interactively
+    - name: Change root password
+      ansible.builtin.expect:
+        command: passwd
+        responses:
+          "New password:": "mysecurepassword"
+          "Retype new password:": "mysecurepassword"
+        timeout: 10
+      register: passwd_output
+    - name: Display password change result
+      ansible.builtin.debug:
+        msg: "Password change output: {{ passwd_output.stdout }}"
+
+    # Task 3: Automate an interactive installer
+    - name: Run interactive installer
+      ansible.builtin.expect:
+        command: ./install.sh
+        responses:
+          "Do you accept the license agreement? (yes/no)": "yes"
+          "Enter installation directory:": "/opt/myapp"
+      register: install_output
+    - name: Display installer output
+      ansible.builtin.debug:
+        msg: "Installer output: {{ install_output.stdout }}"
+        - name: Ensure EPEL repository is enabled on CentOS/RHEL
+        ansible.builtin.yum:
+          name: epel-release
+          state: present
+        when: ansible_os_family == "RedHat"
+  
+      - name: Install pexpect on CentOS/RHEL
+        ansible.builtin.yum:
+          name: python3-pexpect
+          state: present
+        when: ansible_os_family == "RedHat"
+  
+      - name: Install pexpect on Debian/Ubuntu
+        ansible.builtin.apt:
+          name: python3-pexpect
+          state: present
+          update_cache: yes
+        when: ansible_os_family == "Debian"
+  
+      - name: ---- change pass ----
+        expect:
+          command: passwd arian
+          responses:
+            "New password:": "123"
+            "Retype new password:": "123"
+
+            ### if cant install on centos 8 you should run under command : 
+              sudo nano /etc/yum.repos.d/CentOS-Vault.repo
+            
+              [centos-vault]
+              name=CentOS Vault
+              baseurl=https://vault.centos.org/8-stream/AppStream/x86_64/os/
+              enabled=1
+              gpgcheck=0
+              
+              rm -rf /etc/yum.repos.d/CentOS-AppStream.repo
+
+
+              sudo yum clean all
+              sudo yum makecache
+              sudo yum install python3
+
+      ##################COPY module ############
+               # Task 1: Copy a simple file from local to remote with specific permissions
+  - name: Copy a file from local to remote with specific permissions
+    ansible.builtin.copy:
+      src: /path/to/local/file.txt
+      dest: /path/to/remote/file.txt
+      mode: '0644'
+    register: file_copy_1
+  - name: Display result of file copy 1
+    ansible.builtin.debug:
+      msg: "File copy 1 output: {{ file_copy_1 }}"
+
+  # Task 2: Copy an entire directory from local to remote
+  - name: Copy a directory from local to remote
+    ansible.builtin.copy:
+      src: /path/to/local/directory/
+      dest: /path/to/remote/directory/
+      mode: '0755'
+      directory_mode: '0755'
+    register: dir_copy_1
+  - name: Display result of directory copy 1
+    ansible.builtin.debug:
+      msg: "Directory copy 1 output: {{ dir_copy_1 }}"
+
+  # Task 3: Copy a file with Ansible variables in the source and destination paths
+  - name: Copy a file with variables
+    ansible.builtin.copy:
+      src: "/path/to/local/{{ file_name }}.txt"
+      dest: "/path/to/remote/{{ file_name }}.txt"
+      mode: '0644'
+    vars:
+      file_name: "example_file"
+    register: file_copy_2
+  - name: Display result of file copy 2
+    ansible.builtin.debug:
+      msg: "File copy 2 output: {{ file_copy_2 }}"
+
+  # Task 4: Copy a file and create a backup if it already exists
+  - name: Copy a file and create a backup if it exists
+    ansible.builtin.copy:
+      src: /path/to/local/file_to_copy.txt
+      dest: /path/to/remote/file_to_copy.txt
+      backup: yes
+    register: file_copy_3
+  - name: Display result of file copy 3
+    ansible.builtin.debug:
+      msg: "File copy 3 output: {{ file_copy_3 }}"
+
+  # Task 5: Force overwrite the destination file even if it is newer
+  - name: Force copy a file and overwrite it
+    ansible.builtin.copy:
+      src: /path/to/local/force_copy_file.txt
+      dest: /path/to/remote/force_copy_file.txt
+      force: yes
+    register: file_copy_4
+  - name: Display result of forced file copy
+    ansible.builtin.debug:
+      msg: "Forced file copy output: {{ file_copy_4 }}"
+
+      ################## Fetch module ############
+   # Task 1: Fetch a single file
+    - name: Fetch /etc/hostname from remote to local
+      ansible.builtin.fetch:
+        src: /etc/hostname              # File on the remote host
+        dest: /tmp/hostnames/           # Destination directory on the control node
+        flat: yes                       # Save the file without creating directories based on the remote host's path
+
+    # Task 2: Fetch a directory recursively
+    - name: Fetch all logs from /var/log/app
+      ansible.builtin.fetch:
+        src: /var/log/app               # Directory on the remote host
+        dest: /tmp/collected_logs/{{ inventory_hostname }}/  # Destination directory with host-specific folders
+        flat: no                        # Preserve directory structure
+
+    # Task 3: Fetch and rename the file locally
+    - name: Fetch a file and rename it locally
+      ansible.builtin.fetch:
+        src: /etc/passwd
+        dest: /tmp/{{ inventory_hostname }}-passwd.txt  # Rename the file
+        flat: yes
+
+    # Task 4: Fetch only if the source file has changed
+    - name: Fetch file only if it has changed
+      ansible.builtin.fetch:
+        src: /etc/myconfig.conf
+        dest: /tmp/configs/{{ inventory_hostname }}/
+        flat: yes
+        validate_checksum: yes  # Ensure file is not fetched if unchanged   
+
+       #################### Group module ################
+    - name: Ensure a group exists
+       ansible.builtin.group:
+         name: mygroup
+         gid: 1001
+         state: present
+ 
+     # Remove a group if it exists
+  - name: Remove a group
+       ansible.builtin.group:
+         name: oldgroup
+         state: absent
+ 
+     # Ensure a group exists with system group settings
+  - name: Create a system group
+       ansible.builtin.group:
+         name: systemgroup
+         system: yes
+         state: present
+ 
+     # Change a group's GID
+  - name: Change group GID
+       ansible.builtin.group:
+         name: mygroup
+         gid: 2001
+ 
+     # Ensure a group exists and set its password (if shadow is supported)
+  - name: Set group password
+       ansible.builtin.group:
+         name: securegroup
+         password: "{{ 'mypassword' | password_hash('sha512') }}"
+         state: present   
+    ############################## User module ##########
+
+    # Task 1: Ensure a user exists with specific parameters
+  - name: Create a user with home directory and specific UID
+    ansible.builtin.user:
+      name: myuser
+      uid: 1001
+      group: mygroup
+      home: /home/myuser
+      shell: /bin/bash
+      state: present
+    register: user_create
+
+  - name: Display user creation result
+    ansible.builtin.debug:
+      msg: "User creation output: {{ user_create }}"
+
+  # Task 2: Remove a user
+  - name: Remove an existing user
+    ansible.builtin.user:
+      name: olduser
+      state: absent
+      remove: yes  # Remove home directory and mail spool
+
+  # Task 3: Ensure a system user exists
+  - name: Create a system user
+    ansible.builtin.user:
+      name: systemuser
+      system: yes
+      shell: /sbin/nologin
+
+  # Task 4: Modify user properties
+  - name: Update user's shell
+    ansible.builtin.user:
+      name: myuser
+      shell: /bin/zsh
+
+  # Task 5: Lock or unlock a user account
+  - name: Lock a user account
+    ansible.builtin.user:
+      name: myuser
+      password_lock: yes
+
+  - name: Unlock a user account
+    ansible.builtin.user:
+      name: myuser
+      password_lock: no
+
+  # Task 6: Set password for a user (hashed)
+  - name: Set a password for a user
+    ansible.builtin.user:
+      name: myuser
+      password: "{{ 'mypassword' | password_hash('sha512') }}"
+
+  # Task 7: Add a user to supplementary groups
+  - name: Add a user to additional groups
+    ansible.builtin.user:
+      name: myuser
+      groups: group1,group2
+      append: yes  # Do not overwrite existing groups
+
+  # Task 8: Change user's UID and GID
+  - name: Change UID and GID of a user
+    ansible.builtin.user:
+      name: myuser
+      uid: 2001
+      group: mygroup
+
+  # Task 9: Create a user with a non-default home directory
+  - name: Create a user with a custom home directory
+    ansible.builtin.user:
+      name: customuser
+      home: /opt/custom_home
+      create_home: yes
+####################### Yum repository ######################
+
+      # Task 1: Add a new YUM repository
+  - name: Add a YUM repository
+  ansible.builtin.yum_repository:
+    name: myrepo
+    description: "My Custom Repository"
+    baseurl: http://example.com/repos/centos/$releasever/os/$basearch/
+    gpgcheck: yes
+    gpgkey: http://example.com/keys/RPM-GPG-KEY-custom
+    enabled: yes
+    state: present
+
+  # Task 2: Disable an existing YUM repository
+  - name: Disable an existing repository
+  ansible.builtin.yum_repository:
+    name: epel
+    enabled: no
+
+  # Task 3: Remove a YUM repository
+  - name: Remove a repository
+  ansible.builtin.yum_repository:
+    name: unwantedrepo
+    state: absent
+
+  # Task 4: Add a repository with custom proxy settings
+  - name: Add a repository with proxy
+  ansible.builtin.yum_repository:
+    name: proxiedrepo
+    description: "Repository with Proxy"
+    baseurl: http://example.com/proxyrepo/$releasever/os/$basearch/
+    proxy: http://proxy.example.com:8080
+    proxy_username: myuser
+    proxy_password: mypassword
+    state: present
+
+  # Task 5: Add a repository for a specific CentOS version
+  - name: Add a CentOS 7 repository
+  ansible.builtin.yum_repository:
+    name: centos7repo
+    description: "CentOS 7 Custom Repository"
+    baseurl: http://example.com/repos/centos/7/os/x86_64/
+    enabled: yes
+    gpgcheck: no
+
+######################## Check OS ########################
+    - name: Install package for RedHat-based systems
+      ansible.builtin.yum:
+        name: vim
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Install package for Debian-based systems
+      ansible.builtin.apt:
+        name: vim
+        state: present
+        update_cache: yes
+      when: ansible_facts['os_family'] == "Debian"
+
+
+  #############################################
+  
+  ################ YUM ####################### 
+    # Update the package cache
+    - name: Update yum cache
+      ansible.builtin.yum:
+        update_cache: yes
+
+    # Install multiple packages
+    - name: Install packages
+      ansible.builtin.yum:
+        name:
+          - vim
+          - git
+          - wget
+        state: present
+
+    # Remove a specific package
+    - name: Remove nginx
+      ansible.builtin.yum:
+        name: nginx
+        state: absent
+
+    # Install a specific version of a package
+    - name: Install specific version of httpd
+      ansible.builtin.yum:
+        name: httpd-2.4.6-90.el7.centos
+        state: present
+
+    # Ensure a package is not installed
+    - name: Ensure mariadb is not installed
+      ansible.builtin.yum:
+        name: mariadb
+        state: absent
+
+    # Install a package group
+    - name: Install "Development Tools" group
+      ansible.builtin.yum:
+        name: "@Development Tools"
+        state: present
+
+    # Downgrade a package
+    - name: Downgrade a package
+      ansible.builtin.yum:
+        name: kernel
+        state: latest
+        allow_downgrade: yes
+
+
+############################################ Line in file  ###############
+
+    - name: Insert after a specific line
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.all.forwarding = 1"
+        insertafter: "^# Enable IP forwarding"
+        state: present
+
+    # Insert a line before a specific pattern
+    - name: Insert before a specific line
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "# Custom configuration starts here"
+        insertbefore: "^# Custom configuration ends here"
+        state: present
+
+    # Insert a line at the end of the file
+    - name: Insert at the end of the file
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "MY_CUSTOM_VAR=/custom/path"
+        insertafter: EOF
+        state: present
+
+    # Insert a line at the beginning of the file
+    - name: Insert at the beginning of the file
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "# File managed by Ansible"
+        insertbefore: BOF
+        state: present
+    - name: Insert at the beginning of the file
+        lineinfile:
+          path: /etc/environment
+          insertafter: "# your line in file"
+          line: "#line add "
+          #state: present
+
+
+############################ Replace ##############
+    - name: Enable IP forwarding
+      ansible.builtin.replace:
+        path: /etc/sysctl.conf
+        regexp: '^net.ipv4.conf.all.forwarding\s*=\s*0'
+        replace: 'net.ipv4.conf.all.forwarding = 1'
+
+    - name: Uncomment IPv4 forwarding line
+      ansible.builtin.replace:
+        path: /etc/sysctl.conf
+        regexp: '^#\s*(net.ipv4.ip_forward\s*=\s*1)'
+        replace: '\1'
+
+    - name: Update /etc/hosts for custom hostname
+      ansible.builtin.replace:
+        path: /etc/hosts
+        regexp: '^127.0.0.1\s+localhost'
+        replace: '127.0.0.1 myhost.localdomain localhost'
+  ##################### Service ##############3
+   - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    # Ensure nginx service is running
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+
+    # Stop apache2 service if it is running
+    - name: Stop apache2 service
+      ansible.builtin.service:
+        name: apache2
+        state: stopped
+
+    # Restart ssh service to apply new configuration
+    - name: Restart ssh service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+################# Archive ###################
+    # Enable cron service to start at boot
+    - name: Enable cron service at boot
+      ansible.builtin.service:
+        name: cron
+        enabled: yes
+        - name: Create a tar.gz archive of /var/log excluding debug logs and temp files
+        ansible.builtin.archive:
+          path: /var/log
+          dest: /tmp/logs_backup.tar.gz
+          format: gz
+          exclude_path:
+            - /var/log/debug
+            - /var/log/tmp/*
+        tags:
+          - archive
+  
+      # Step 2: Extract the archive
+      - name: Extract the logs_backup.tar.gz to /tmp/extracted_logs
+        ansible.builtin.archive:
+          path: /tmp/logs_backup.tar.gz
+          dest: /tmp/extracted_logs
+          remote_src: true
+        tags:
+          - extract
+  
+      # Optional: Archive another directory, exclude paths, and remove source
+      - name: Archive /home/user/data excluding .bak files and remove original files
+        ansible.builtin.archive:
+          path: /home/user/data
+          dest: /tmp/data_backup.tar.gz
+          format: gz
+          remove: true
+          exclude_path:
+            - /home/user/data/*.bak
+            - /home/user/data/temp
+        tags:
+          - archive
+            # Step 1: Archive a directory
+    - name: Create a tar.gz archive of /var/log
+    ansible.builtin.archive:
+      path: /var/log
+      dest: /tmp/logs_backup.tar.gz
+      format: gz
+    tags:
+      - archive
+
+  # Step 2: Extract the archive
+  - name: Extract the logs_backup.tar.gz to /tmp/extracted_logs
+    ansible.builtin.archive:
+      path: /tmp/logs_backup.tar.gz
+      dest: /tmp/extracted_logs
+      remote_src: true
+    tags:
+      - extract
+
+  # Optional: Archive another directory and remove the source files
+  - name: Archive /home/user/data and remove original files
+    ansible.builtin.archive:
+      path: /home/user/data
+      dest: /tmp/data_backup.tar.gz
+      format: gz
+      remove: true
+  ############### UnArchive #####################
+
+      # Archive a directory
+      - name: Archive the /var/log directory into a tar.gz file
+      ansible.builtin.archive:
+        path: /var/log
+        dest: /tmp/logs_backup.tar.gz
+        format: gz
+      tags:
+        - archive
+
+    # Unarchive with keep_newer
+    - name: Extract logs_backup.tar.gz to /tmp/extracted_logs and keep newer files
+      ansible.builtin.unarchive:
+        src: /tmp/logs_backup.tar.gz
+        dest: /tmp/extracted_logs
+        remote_src: true
+        keep_newer: true
+   
+      - unarchive
+      - name: Wait for specific content in a file
+      hosts: all
+      tasks:
+        - name: Wait until the file contains "ready"
+          wait_for:
+            path: /tmp/status.txt
+            search_regex: "ready"
+            timeout: 300  
+            
